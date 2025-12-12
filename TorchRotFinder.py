@@ -122,8 +122,8 @@ def ComputeIsometryWithMatchingnD(A, B, maxchunksize=1000, sinkhorn_iters=50, re
     valF = min_val.item()
     rotR = rotF[0].cpu().numpy()
 
-
-    torch.cuda.reset_max_memory_allocated()
-    torch.cuda.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.reset_max_memory_allocated()
+        torch.cuda.empty_cache()
 
     return Af, Bf, valF, rotR, G, t
