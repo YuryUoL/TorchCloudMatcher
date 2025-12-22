@@ -118,6 +118,9 @@ def greedy_bijection_from_G_np(G):
 #def launch_sinkhorn_from_distanceMat(X_cpu, Y_cpu, C_cpu, inv_perms=None,
 #                            reg=1e-3, sinkhorn_iters=100, extract_bijection=True, use_greedy=True, starttime = None)
 
+
+
+
 def run_sinkhorn_torch(
     X, Y,
     reg=1e-3,
@@ -146,10 +149,10 @@ def run_sinkhorn_torch(
     # --------------------------
     if torch.cuda.is_available():
         device = torch.device("cuda")
-        print(">> Using GPU:", device)
+      #  print(">> Using GPU:", device)
     else:
         device = torch.device("cpu")
-        print(">> Using CPU")
+      #  print(">> Using CPU")
 
     # Move data to device
     X = X.to(device)
@@ -158,7 +161,24 @@ def run_sinkhorn_torch(
     # --------------------------
     # Compute cost matrix C
     # --------------------------
+
     C = pairwise_cost_batch_torch(X, Y, metric=metric)
+
+    return run_sinkhorn_distanceMat(C, reg = reg, sinkhorn_iters= sinkhorn_iters, extract= extract, use_greedy = use_greedy)
+
+
+
+def run_sinkhorn_distanceMat(C, reg=1e-3,sinkhorn_iters=100,
+    extract=False,
+    use_greedy=True, ):
+
+  #  if torch.cuda.is_available():
+  #      device = torch.device("cuda")
+  #      print(">> Using GPU:", device)
+  #  else:
+  #      device = torch.device("cpu")
+  #      print(">> Using CPU")
+
 
     # --------------------------
     # Run Sinkhorn solver

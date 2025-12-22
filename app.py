@@ -7,7 +7,9 @@ import gc
 import io
 import json
 
-from TorchRotFinder import ComputeIsometryWithMatchingnD
+#TorchRotFinder
+
+from TorchRotFinderOptimized import ComputeIsometryWithMatchingnD
 from Cloudgen_2D import make_batch_cpu
 
 st.set_page_config(layout="wide")
@@ -88,8 +90,14 @@ with col_rng1:
     N = st.number_input("N (number of points)", min_value=1, max_value=20000,
                         value=10, step=1)
 with col_rng2:
-    eps = st.number_input("eps (float)", min_value=0.0, max_value=10.0,
-                          value=0.01, step=0.001)
+    eps = st.number_input(
+        "eps (float)",
+        min_value=0.0,
+        max_value=10.0,
+        value=0.01,
+        step=0.001,
+        format="%.6f"
+    )
 with col_rng3:
     sep = st.number_input("sep (float)", min_value=0.0, max_value=2.0,
                           value=1.5, step=0.001)
@@ -148,7 +156,10 @@ with col_left:
     st.markdown("### Compute parameters")
     maxchunksize = st.number_input("maxchunksize", min_value=1, max_value=200000, value=200, step=1)
     sinkhorn_iters = st.number_input("sinkhorn_iters", min_value=1, max_value=10000, value=50, step=1)
+    rot_iters = st.number_input("rot_iters", min_value=1, max_value=10000, value=2, step=1)
     reg = st.number_input("reg (float)", min_value=1e-9, max_value=10.0, value=1e-3, format="%.6g")
+
+
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -313,7 +324,7 @@ if compute_clicked:
             try:
                 A2, B2, min_val, R, G, tmap = ComputeIsometryWithMatchingnD(
                     A_np, B_np, maxchunksize=int(maxchunksize),
-                    sinkhorn_iters=int(sinkhorn_iters), reg=float(reg)
+                    sinkhorn_iters=int(sinkhorn_iters), rot_iters = int(rot_iters) , reg=float(reg)
                 )
             except Exception as e:
                 st.exception(f"ComputeIsometryWithMatchingnD failed: {e}")
@@ -450,7 +461,7 @@ if compute_clicked:
 
         # Cleanup
 
-print("ok")
+#print("ok")
 
 # -------------------------------------------------------
 # SHOW CONNECTIONS BUTTON HANDLER (outside compute block!)
