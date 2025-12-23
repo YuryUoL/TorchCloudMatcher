@@ -1,16 +1,8 @@
-import streamlit as st
-import pandas as pd
-import plotly.graph_objects as go
-import numpy as np
 import time
-import math
-import gc
 
-
-
-from TorchRotFinder import ComputeIsometryWithMatchingnD
-import TorchRotFinderOptimized
-from Cloudgen_2D import make_batch_cpu
+from core.TorchRotFinder import ComputeIsometryWithMatchingnD
+from core import TorchRotFinderOptimized
+from utils.Cloudgen_2D import make_batch_cpu
 
 def runFirstTest():
     N = 200
@@ -38,7 +30,7 @@ def runSecondTest():
     )
     print("old rot: ", mats)
     ts = time.time()
-    Anew,Bnew,min_val, rotFnew, G, t = TorchRotFinderOptimized.ComputeIsometryWithMatchingnD(Xs[0],Ys[0],200,50, rot_iters= 2,reg = 1e-3)
+    Anew,Bnew,min_val, rotFnew, G, t = TorchRotFinderOptimized.ComputeIsometryWithMatchingnD(Xs[0], Ys[0], 200, 50, rot_iters= 2, reg = 1e-3)
     te = time.time()
     print("Calculation time: ", te-ts)
     print(min_val)

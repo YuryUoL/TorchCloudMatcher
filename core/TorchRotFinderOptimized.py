@@ -1,7 +1,8 @@
 import torch
 import itertools
 import numpy as np
-import TorchEMD  # your Sinkhorn implementation
+from scipy.optimize import linear_sum_assignment
+from core import TorchEMDRotOptimizedHypotheses
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -60,70 +61,73 @@ def rotation_matrices_batch_ND(x, Y):
     return R_batch
 
 
-def ComputeIsometryWithMatchingnD(A, B, maxchunksize=1000, sinkhorn_iters=50, reg=1e-3):
+def ComputeIsometryWithMatchingnD(A, B, maxchunksize=1000, sinkhorn_iters=50, rot_iters=1, reg=1e-3):
     """
-    Compute approximate isometry between point clouds A and B.
+    Compute approximate isometry between point clouds A and B, optimized for memory.
+    Returns CPU numpy arrays/floats.
     """
-    A = torch.tensor(A, dtype=torch.float32, device=device)
-    B = torch.tensor(B, dtype=torch.float32, device=device)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # Convert to tensors
+    A = torch.as_tensor(A, dtype=torch.float32, device=device)
+    B = torch.as_tensor(B, dtype=torch.float32, device=device)
 
     cloudSize, k = A.shape
     perms = np.array(list(itertools.permutations(range(cloudSize), k - 1)))
-    perm_tensor = torch.tensor(perms, device=device, dtype=torch.long)
+    perm_tensor = torch.as_tensor(perms, device=device, dtype=torch.long)
 
+    # Center the clouds
     A = center_point_cloud(A)
     B = center_point_cloud(B)
 
     best_idx = max_subspace_volume(A, perm_tensor)
     total_pairs = perm_tensor.shape[0]
 
-    d_list = []
+    # Select reference subcloud
     Aselect = A[perm_tensor[best_idx], :]
+
+    # Initialize best result trackers
+    best_val = float('inf')
+    best_G = None
+    best_rot = None
 
     for start in range(0, total_pairs, maxchunksize):
         end = min(start + maxchunksize, total_pairs)
         selected_indices = perm_tensor[start:end, :]
 
+        # Compute candidate rotations
         rotMats = rotation_matrices_batch_ND(Aselect, B[selected_indices])
-        N = rotMats.shape[0]
 
-        batchedX = A.unsqueeze(0).expand(N, -1, -1)
-        rotatedX = torch.bmm(batchedX, rotMats.transpose(1, 2))
-        batchedY = B.unsqueeze(0).expand(N, -1, -1)
-
-        dataBD = TorchEMD.run_sinkhorn_torch(
-            rotatedX, batchedY, reg=reg, sinkhorn_iters=sinkhorn_iters,
-            extract=False, use_greedy=False
+        # Run Sinkhorn + Procrustes
+        dataBD = TorchEMDRotOptimizedHypotheses.run_sinkhorn_torch_rot_hypotheses(
+            A, B, rotMats, reg=reg, sinkhorn_iters=sinkhorn_iters, rot_iters=rot_iters
         )
-        d_list.append(dataBD["expected"])
 
-    d_all = torch.cat(d_list, dim=0)
-    min_val, min_idx_r = torch.min(d_all, dim=0)
+        # Find best in this chunk
+        chunk_min_val, chunk_min_idx = torch.min(dataBD["expected_distance"], dim=0)
 
-    Bdash = B[perm_tensor[min_idx_r], :].unsqueeze(0)
-    rotF = rotation_matrices_batch_ND(Aselect, Bdash)
+        if chunk_min_val < best_val:
+            best_val = chunk_min_val
+            best_G = dataBD["G"][chunk_min_idx]
+            best_rot = dataBD["R"][chunk_min_idx]
 
-    # Compute final Sinkhorn
-    batchedXone = A.unsqueeze(0)
-    rotatedXone = torch.bmm(batchedXone, rotF.transpose(1, 2))
-    batchedYtwo = B.unsqueeze(0)
+        # Optional: free memory immediately
+        del dataBD, rotMats
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
-    dataBDspecial = TorchEMD.run_sinkhorn_torch(
-        rotatedXone, batchedYtwo, reg=reg, sinkhorn_iters=sinkhorn_iters,
-        extract=True, use_greedy=False
-    )
-
-    G = dataBDspecial["G"][0]
-    t = dataBDspecial["bij_perm"][0]
+    # Convert to CPU NumPy arrays / float
+    best_val = best_val.item()
+    best_G = best_G.cpu().numpy()
+    best_rot = best_rot.cpu().numpy()
 
     Af = A.cpu().numpy()
     Bf = B.cpu().numpy()
-    valF = min_val.item()
-    rotR = rotF[0].cpu().numpy()
 
-    if torch.cuda.is_available():
-        torch.cuda.reset_max_memory_allocated()
-        torch.cuda.empty_cache()
+    cost = -best_G
+    rows, cols = linear_sum_assignment(cost)
+    perm = np.zeros(best_G.shape[0], dtype=int)
+    perm[rows] = cols
 
-    return Af, Bf, valF, rotR, G, t
+    return Af,Bf, best_val, best_rot, best_G,perm
+

@@ -1,6 +1,5 @@
 import torch
-import numpy as np
-from TorchEMD import pairwise_cost_batch_torch, batched_log_sinkhorn_torch
+from core.TorchEMD import pairwise_cost_batch_torch, batched_log_sinkhorn_torch
 
 
 # ------------------------
