@@ -49,15 +49,21 @@ for col, file, cloud_name, key_name in [(col_up1, file_A, "cloud_A", "cloud_A_ed
                 st.error(f"Failed to read CSV: {e}")
 
 # ---------------- Random Cloud Generator ----------------
-st.subheader("Random Cloud Generator (From Cloudgen_3D)")
-col_rng1, col_rng2, col_rng3, col_rng_btn = st.columns([1,1,1,1])
+st.subheader("Random Cloud Generator")
+col_rng1, col_rng2, col_rng3,col_rng4, col_rng_btn = st.columns([1,1,1,1,1])
 N = col_rng1.number_input("N (number of points)", 1, 20000, 10)
 eps = col_rng2.number_input("eps (float)", 0.0, 10.0, 0.01, step=0.001, format="%.6f")
 sep = col_rng3.number_input("sep (float)", 0.0, 2.0, 1.5, step=0.001)
+mode = col_rng4.selectbox(
+    "Transform",
+    options=["rotation", "reflection"],
+    index=0  # default = rotation
+)
+
 generate_clicked = col_rng_btn.button("Generate Random Cloud")
 
 if generate_clicked:
-    Xs, Ys, _, _, _ = make_batch_cpu(B=1, N=N, K=3, eps=eps, delta=0, mode="rotation", generationmode="box")
+    Xs, Ys, _, _, _ = make_batch_cpu(B=1, N=N, K=3, eps=eps, delta=0, mode=mode, generationmode="box")
     X = np.asarray(Xs[0]) - np.array([sep/2,0,0])
     Y = np.asarray(Ys[0]) + np.array([sep/2,0,0])
     st.session_state["cloud_A"] = pd.DataFrame({"L":[f"A{i}" for i in range(len(X))], "X":X[:,0], "Y":X[:,1], "Z":X[:,2]})
@@ -96,7 +102,7 @@ def display_compute_output(out):
     tmap_list = out["tmap"].tolist()
     R_list = out["R"].tolist()
 
-    output_placeholder.markdown(f"### Computation Results  \n**Distance:** `{out['min_val']:.6f}`  \n")
+    output_placeholder.markdown(f"### Computation Results  \n**Distance:** `{out['min_val']:.6f}`  \n **Bottleneck distance (euclidean):** `{out['bddist']:.6f}`  \n")
 
     st.subheader("Bijection (tmap) — mapping index i in A -> tmap[i] in B")
     st.text_area("tmap (copyable)", compact_json(tmap_list), height=140, key=f"tmap_{time.time_ns()}")

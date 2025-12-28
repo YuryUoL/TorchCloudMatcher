@@ -1,5 +1,6 @@
 import numpy as np
 from core.TorchRotFinderOptimized import ComputeIsometryWithMatchingnD
+from core.TorchRotFinderOptimized import ComputeBD
 
 def compute_isometry(A_np, B_np, maxchunksize=200, sinkhorn_iters=50, rot_iters=2, reg=1e-3):
     """
@@ -23,7 +24,9 @@ def compute_isometry(A_np, B_np, maxchunksize=200, sinkhorn_iters=50, rot_iters=
     theta_end = np.arctan2(R_end[1, 0], R_end[0, 0])
     A_final = A2 @ R_end
 
-    return dict(A2=A2, B2=B2, R=R, G=G, tmap=tmap, A_final=A_final, min_val=float(min_val), theta_end=theta_end)
+    bddist = ComputeBD(A_final, B2 , tmap,metric = 'euclidean')
+
+    return dict(A2=A2, B2=B2, R=R, G=G, tmap=tmap, A_final=A_final, min_val=float(min_val), theta_end=theta_end, bddist = bddist)
 
 def compute_isometry_nD(A_np, B_np, maxchunksize=200, sinkhorn_iters=50, rot_iters=2, reg=1e-3):
     """
@@ -46,4 +49,6 @@ def compute_isometry_nD(A_np, B_np, maxchunksize=200, sinkhorn_iters=50, rot_ite
     R_end = R.T
     A_final = A2 @ R_end
 
-    return dict(A2=A2, B2=B2, R=R, G=G, tmap=tmap, A_final=A_final, min_val=float(min_val))
+    bddist = ComputeBD(A_final, B2, tmap,metric = 'euclidean')
+
+    return dict(A2=A2, B2=B2, R=R, G=G, tmap=tmap, A_final=A_final, min_val=float(min_val), bddist = bddist)

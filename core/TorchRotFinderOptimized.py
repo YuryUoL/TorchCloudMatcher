@@ -61,7 +61,7 @@ def rotation_matrices_batch_ND(x, Y):
     return R_batch
 
 
-def ComputeIsometryWithMatchingnD(A, B, maxchunksize=1000, sinkhorn_iters=50, rot_iters=1, reg=1e-3):
+def ComputeIsometryWithMatchingnD(A, B, maxchunksize=1000, sinkhorn_iters=50, rot_iters=1, reg=1e-3,metric = 'sqeuclid'):
     """
     Compute approximate isometry between point clouds A and B, optimized for memory.
     Returns CPU numpy arrays/floats.
@@ -100,7 +100,7 @@ def ComputeIsometryWithMatchingnD(A, B, maxchunksize=1000, sinkhorn_iters=50, ro
 
         # Run Sinkhorn + Procrustes
         dataBD = TorchEMDRotOptimizedHypotheses.run_sinkhorn_torch_rot_hypotheses(
-            A, B, rotMats, reg=reg, sinkhorn_iters=sinkhorn_iters, rot_iters=rot_iters
+            A, B, rotMats, metric = metric, reg=reg, sinkhorn_iters=sinkhorn_iters, rot_iters=rot_iters
         )
 
         # Find best in this chunk
@@ -129,5 +129,44 @@ def ComputeIsometryWithMatchingnD(A, B, maxchunksize=1000, sinkhorn_iters=50, ro
     perm = np.zeros(best_G.shape[0], dtype=int)
     perm[rows] = cols
 
+
+
     return Af,Bf, best_val, best_rot, best_G,perm
+
+def ComputeMatching(best_G):
+    cost = -best_G
+    rows, cols = linear_sum_assignment(cost)
+    perm = np.zeros(best_G.shape[0], dtype=int)
+    perm[rows] = cols
+    return perm
+
+
+def ComputeBD(X, Y, perm, metric="linf"):
+    """
+    Compute the bottleneck distance between point sets X and Y with a given permutation.
+
+    Parameters:
+    - X: N x d array of points
+    - Y: N x d array of points
+    - perm: permutation of indices for Y
+    - metric: "linf" (default) or "euclidean"
+
+    Returns:
+    - bottleneck distance
+    """
+    Y_match = Y[perm, :]
+
+    if metric == "linf":
+        diffs = np.abs(X - Y_match)
+        bottleneck_bij = np.max(diffs)
+    elif metric == "euclidean":
+        diffs = X - Y_match
+        dists = np.linalg.norm(diffs, axis=1)
+        bottleneck_bij = np.max(dists)
+    else:
+        raise ValueError("Unsupported metric. Choose 'linf' or 'euclidean'.")
+
+    return bottleneck_bij
+
+
 
