@@ -144,7 +144,7 @@ def run_sinkhorn_torch_rot_hypotheses(
     reg=1e-3,
     metric="sqeuclid",
     sinkhorn_iters=50,
-    rot_iters=1,
+    rot_iters=2,
     verbose=False,
 ):
     """
