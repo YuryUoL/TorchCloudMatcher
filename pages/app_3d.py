@@ -9,7 +9,7 @@ from utils.Cloudgen_2D import make_batch_cpu
 from core.compute_2d import compute_isometry_nD
 from plotting.plot_3d import plot_clouds_3d, plot_clouds_with_matches_3d, build_animation_frames_3d
 from ui.controls import initialize_session, handle_table_editing
-
+from ui.app_nd import display_compute_output
 st.set_page_config(layout="wide")
 
 # --- Navigation ---
@@ -93,30 +93,7 @@ with col_right:
     plot_placeholder = st.empty()
     output_placeholder = st.empty()
 
-# ---------------- Helper for JSON outputs ----------------
-def compact_json(obj):
-    return json.dumps(obj, separators=(',', ':'))
 
-def display_compute_output(out):
-    """Show distance, tmap, R, G and download buttons"""
-    tmap_list = out["tmap"].tolist()
-    R_list = out["R"].tolist()
-
-    output_placeholder.markdown(f"### Computation Results  \n**Distance:** `{out['min_val']:.6f}`  \n **Bottleneck distance (euclidean):** `{out['bddist']:.6f}`  \n")
-
-    st.subheader("Bijection (tmap) — mapping index i in A -> tmap[i] in B")
-    st.text_area("tmap (copyable)", compact_json(tmap_list), height=140, key=f"tmap_{time.time_ns()}")
-    st.download_button("Download tmap (JSON)", data=compact_json(tmap_list), file_name="tmap.json", mime="application/json")
-
-    st.subheader("Rotation matrix R (copyable)")
-    st.text_area("R (copyable)", compact_json(R_list), height=140, key=f"R_{time.time_ns()}")
-    st.download_button("Download R (JSON)", data=compact_json(R_list), file_name="rotation_matrix_R.json", mime="application/json")
-
-    if out.get("G") is not None:
-        buf = io.BytesIO()
-        np.save(buf, np.asarray(out["G"]))
-        buf.seek(0)
-        st.download_button("Download G (numpy .npy)", data=buf, file_name="G.npy", mime="application/octet-stream")
 
 # ---------------- Button Actions ----------------
 if plot_clicked:

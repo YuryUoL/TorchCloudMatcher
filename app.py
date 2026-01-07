@@ -105,7 +105,9 @@ col1, col2 = st.columns(2)
 with col1:
     if st.button("2D Point Clouds"):
         st.switch_page("pages/app_2d.py")
+        #st.switch_page("pages/app_2d.py")
 
 with col2:
     if st.button("3D Point Clouds"):
         st.switch_page("pages/app_3d.py")
+       # st.switch_page("pages/app_3d.py")
