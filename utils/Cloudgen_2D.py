@@ -4,7 +4,7 @@ import numpy as np
 # -----------------------------
 #  Utility: random rotation
 # -----------------------------
-def random_rotation_matrix():
+def random_rotation_matrix_2d():
     theta = np.random.uniform(0, 2*np.pi)
     c, s = np.cos(theta), np.sin(theta)
     return np.array([[c, -s],
@@ -14,7 +14,7 @@ def random_rotation_matrix():
 #  Utility: random reflection
 #  reflection across random axis
 # -----------------------------
-def random_reflection_matrix():
+def random_reflection_matrix_2d():
     angle = np.random.uniform(0, 2*np.pi)
     c, s = np.cos(angle), np.sin(angle)
     # unit vector u = (c, s)
@@ -27,6 +27,9 @@ def random_reflection_matrix():
 #  Generate separated points
 # -----------------------------
 def generate_separated_points_np(n, k, delta, max_tries=100000):
+    if delta <= 0:
+        return np.random.rand(n, k).astype(np.float32)
+
     pts = []
     tries = 0
     while len(pts) < n and tries < max_tries:
@@ -37,6 +40,7 @@ def generate_separated_points_np(n, k, delta, max_tries=100000):
     if len(pts) < n:
         raise RuntimeError(f"Could not generate {n} separated points")
     return np.array(pts, dtype=np.float32)
+
 
 # -----------------------------
 #  Single cloud generation task
@@ -49,10 +53,10 @@ def generate_cloud_task(args):
 
     # Decide transformation type
     if np.random.rand() < 0.5:
-        mat = random_rotation_matrix()
+        mat = random_rotation_matrix(2)
         ttype = "rotation"
     else:
-        mat = random_reflection_matrix()
+        mat = random_reflection_matrix(2)
         ttype = "reflection"
 
     # Apply rigid transform BEFORE noise
@@ -181,6 +185,7 @@ def make_batch_cpu(B, N, K, eps, delta, mode="both", generationmode = 'box'):
     Produces Xs and Ys that are both centered (zero-mean per sample).
     Noise is isotropic uniform inside an L2-ball of radius eps.
     """
+    print("Starting to generate batched points")
     Xs = np.empty((B, N, K), dtype=np.float32)
     Ys = np.empty((B, N, K), dtype=np.float32)
     perms = np.empty((B, N), dtype=np.int64)
@@ -194,8 +199,11 @@ def make_batch_cpu(B, N, K, eps, delta, mode="both", generationmode = 'box'):
         # center X
             mu = X.mean(axis=0, keepdims=True).astype(np.float32)
             Xc = X - mu
-        if generationmode == 'sphere':
+        elif generationmode == 'sphere':
             Xc = random_points_on_sphere(N, K).astype(np.float32)
+
+        else:
+            raise ValueError("generationmode must be 'box' or 'sphere'")
 
 
         # choose matrix
@@ -236,8 +244,8 @@ def make_batch_cpu(B, N, K, eps, delta, mode="both", generationmode = 'box'):
 
         Yc = Xc_trans[perm] + noise
 
-        # recenter Y for exact centering
-        Yc -= Yc.mean(axis=0, keepdims=True)
+        if mode != "plain":
+            Yc -= Yc.mean(axis=0, keepdims=True)
 
         Xs[b] = Xc
         Ys[b] = Yc

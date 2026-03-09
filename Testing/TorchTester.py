@@ -56,5 +56,28 @@ def runSecondTest():
     bddist = TorchRotFinderOptimized.ComputeBD(Anew @ np.transpose(rotFnew), Bnew , t)
     print(bddist)
 
+def runThirdTest():
+    N = 5000
+    eps = 0.1
+    K = 2
+    B = 1
+    Xs, Ys, inv_perms, mats, types = make_batch_cpu(
+        B=B, N=N, K=K, eps=eps, delta=0,
+        mode="rotation", generationmode="box"
+    )
+
+    Xcompare = Xs @ mats.transpose(0, 2, 1)
+    Ycompare = np.stack([Ys[j][inv_perms[j]] for j in range(B)], axis=0)
+    start = time.time()
+    dataBD = TorchEMD.run_sinkhorn_torch(Xcompare, Ys)
+    end = time.time()
+
+    emd_original_s = dataBD["expected"].cpu().numpy()
+    print(emd_original_s)
+    print("Computation time:", end - start, "seconds")
+
+
+
 #runFirstTest()
-runSecondTest()
+#runSecondTest()
+runThirdTest()
